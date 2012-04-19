@@ -40,7 +40,10 @@ def weechat_init
   @buffer = Weechat.buffer_new("Connections", "buf_in_cb", "", "", "")
   @recent, @selected = [], 0
 
+
+  # Change me!
   server_name = "server.load_testing"
+
 
   Weechat.buffer_set(@buffer, "title", "Interactive Connection List")
 
