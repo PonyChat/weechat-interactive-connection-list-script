@@ -238,7 +238,4 @@ def update_display
     
     Weechat.print_date_tags(@buffer, conn.time.to_i, "", str)
   end
-
-  Weechat.print("", @selected.to_s)
-
 end
