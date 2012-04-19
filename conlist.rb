@@ -24,7 +24,7 @@ def weechat_init
   Weechat.buffer_set(@buffer, "key_bind_c",        "/icl clear")
   Weechat.buffer_set(@buffer, "key_bind_r",        "/icl refresh")
 
-  @server_buffer = Weechat.buffer_search("irc", @server_name)
+  @server_buffer = Weechat.buffer_search("irc", server_name)
 
   if @server_buffer == nil
     Weechat.print("", "Server buffer cannot be found.")
