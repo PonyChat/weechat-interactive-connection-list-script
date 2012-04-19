@@ -21,8 +21,9 @@
 #
 # Controls:
 #
-#   Up/Down Arrows      Nagivate list by single lines.
-#   Page Up/Down        Nagivate list by whole pages.
+#   Up/Down Arrows      Navigate list by single lines.
+#   Page Up/Down        Navigate list by whole pages.
+#   Home/End            Navigate to the first or last item.
 #   r                   Refresh list.
 #   c                   Clear list.
 #   k                   Flag selected item for KILL.
@@ -54,6 +55,8 @@ def weechat_init
   Weechat.buffer_set(@buffer, "key_bind_meta2-B",  "/icl down")
   Weechat.buffer_set(@buffer, "key_bind_meta2-5~", "/icl pageup")
   Weechat.buffer_set(@buffer, "key_bind_meta2-6~", "/icl pagedown")
+  Weechat.buffer_set(@buffer, "key_bind_meta2-7~", "/icl home")
+  Weechat.buffer_set(@buffer, "key_bind_meta2-8~", "/icl end")
   Weechat.buffer_set(@buffer, "key_bind_k",        "/icl kill")
   Weechat.buffer_set(@buffer, "key_bind_a",        "/icl akill")
   Weechat.buffer_set(@buffer, "key_bind_u",        "/icl unset")
@@ -96,13 +99,17 @@ def cmd(data, buffer, args)
   case arr.shift.upcase
 
   when "DOWN"
-    down
+    scroll_down
   when "UP"
-    up
+    scroll_up
   when "PAGEDOWN"
-    pagedown
+    scroll_page_down
   when "PAGEUP"
-    pageup
+    scroll_page_up
+  when "HOME"
+    scroll_home
+  when "END"
+    scroll_end
   when "AKILL"
     akill
   when "KILL"
@@ -120,20 +127,20 @@ def cmd(data, buffer, args)
   Weechat::WEECHAT_RC_OK
 end
 
-def down
+def scroll_down
   @selected += 1 unless @selected == @recent.length - 1
 
   update_display
 end
 
-def up
+def scroll_up
   return if @selected == 0
   @selected -= 1
 
   update_display
 end
 
-def pagedown
+def scroll_page_down
   height = Weechat.window_get_integer(Weechat.current_window(), "win_chat_height")
 
   return if @selected + height > @recent.length - 1
@@ -142,11 +149,23 @@ def pagedown
   update_display
 end
 
-def pageup
+def scroll_page_up
   height = Weechat.window_get_integer(Weechat.current_window(), "win_chat_height")
 
   return if @selected - height < 0
   @selected -= height
+
+  update_display
+end
+
+def scroll_home
+  @selected = 0
+
+  update_display
+end
+
+def scroll_end
+  @selected = @recent.length - 1
 
   update_display
 end
