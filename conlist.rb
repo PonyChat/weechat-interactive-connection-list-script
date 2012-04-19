@@ -175,7 +175,7 @@ def kill
 
   @recent[@selected].status = :kill_pending
 
-  down
+  scroll_down
 end
 
 def akill
@@ -183,7 +183,7 @@ def akill
 
   @recent[@selected].status = :akill_pending
 
-  down
+  scroll_down
 end
 
 def unset
