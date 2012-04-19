@@ -1,30 +1,28 @@
-Connector = Struct.new(:time, :nick, :ip, :status, :current)
+ICL_Client = Struct.new(:time, :nick, :ip, :status, :current)
 
 def weechat_init
   Weechat.register("conlist", "Kabaka", "1.0", "MIT", "Interactive Connection List", "", "")
 
   @buffer = Weechat.buffer_new("Connections", "buf_in_cb", "", "", "")
   @recent, @selected = [], 0
-  @server_name = "server.load_testing"
+
+  server_name = "server.load_testing"
 
   Weechat.buffer_set(@buffer, "title", "Interactive Connection List")
-  #Weechat.buffer_set(@buffer, "type", "free")
-  #Weechat.buffer_set(@buffer, "time_for_each_line", "0")
 
-  Weechat.hook_command("connector", "Connection List Control", "", "", "", "cmd", "")
+  Weechat.hook_command("icl", "Connection List Control", "", "", "", "cmd", "")
   Weechat.hook_modifier("input_text_content", "input_cb", "")
 
-  Weechat.buffer_set(@buffer, "key_bind_meta2-A",  "/connector up")
-  Weechat.buffer_set(@buffer, "key_bind_meta2-B",  "/connector down")
-  Weechat.buffer_set(@buffer, "key_bind_meta2-5~", "/connector pageup")
-  Weechat.buffer_set(@buffer, "key_bind_meta2-6~", "/connector pagedown")
-  Weechat.buffer_set(@buffer, "key_bind_k",        "/connector kill")
-  Weechat.buffer_set(@buffer, "key_bind_a",        "/connector akill")
-  Weechat.buffer_set(@buffer, "key_bind_u",        "/connector unset")
-  Weechat.buffer_set(@buffer, "key_bind_ctrl-M",   "/connector commit")
-  Weechat.buffer_set(@buffer, "key_bind_c",        "/connector clear")
-  Weechat.buffer_set(@buffer, "key_bind_r",        "/connector refresh")
-
+  Weechat.buffer_set(@buffer, "key_bind_meta2-A",  "/icl up")
+  Weechat.buffer_set(@buffer, "key_bind_meta2-B",  "/icl down")
+  Weechat.buffer_set(@buffer, "key_bind_meta2-5~", "/icl pageup")
+  Weechat.buffer_set(@buffer, "key_bind_meta2-6~", "/icl pagedown")
+  Weechat.buffer_set(@buffer, "key_bind_k",        "/icl kill")
+  Weechat.buffer_set(@buffer, "key_bind_a",        "/icl akill")
+  Weechat.buffer_set(@buffer, "key_bind_u",        "/icl unset")
+  Weechat.buffer_set(@buffer, "key_bind_ctrl-M",   "/icl commit")
+  Weechat.buffer_set(@buffer, "key_bind_c",        "/icl clear")
+  Weechat.buffer_set(@buffer, "key_bind_r",        "/icl refresh")
 
   @server_buffer = Weechat.buffer_search("irc", @server_name)
 
@@ -41,7 +39,7 @@ end
 def conn_hook(data, buffer, date, tags, displayed, highlight, prefix, message)
   return Weechat::WEECHAT_RC_OK unless message =~ /Client connecting: ([^ ]+) \([^)]+\) \[([0-9.:]+)\]/
 
-  @recent << Connector.new(Time.now, $1, $2, :unbanned, false)
+  @recent << ICL_Client.new(Time.now, $1, $2, :unbanned, false)
   @recent.shift if @recent.length > 5000
 
   update_display
@@ -101,7 +99,8 @@ end
 def pagedown
   height = Weechat.window_get_integer(Weechat.current_window(), "win_chat_height")
 
-  @selected += height unless @selected + height > @recent.length - 1
+  return if @selected + height > @recent.length - 1
+  @selected += height
 
   update_display
 end
