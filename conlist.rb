@@ -43,7 +43,7 @@ def weechat_init
 
 
   # Change me!
-  server_name = "server.load_testing"
+  server_name = "server.ponychat"
 
 
   Weechat.buffer_set(@buffer, "title", "Interactive Connection List")
@@ -79,10 +79,16 @@ end
 def conn_hook(data, buffer, date, tags, displayed, highlight, prefix, message)
   return Weechat::WEECHAT_RC_OK unless message =~ /Client connecting: ([^ ]+) \([^)]+\) \[([0-9.:]+)\]/
 
-  @recent << ICL_Client.new(Time.now, $1, $2, :unbanned, false)
-  @recent.shift if @recent.length > 5000
+  scroll_after_update = @selected == @recent.length
 
-  update_display
+  @recent << ICL_Client.new(Time.now, $1, $2, :unbanned, false)
+  @recent.shift if @recent.length > 1000
+
+  if scroll_after_update
+    scroll_end
+  else
+    update_display
+  end
 
   Weechat::WEECHAT_RC_OK
 end
