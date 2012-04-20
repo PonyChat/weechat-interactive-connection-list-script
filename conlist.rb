@@ -79,7 +79,7 @@ end
 def conn_hook(data, buffer, date, tags, displayed, highlight, prefix, message)
   return Weechat::WEECHAT_RC_OK unless message =~ /Client connecting: ([^ ]+) \([^)]+\) \[([0-9.:]+)\]/
 
-  scroll_after_update = @selected == @recent.length
+  scroll_after_update = @selected == @recent.length - 1
 
   @recent << ICL_Client.new(Time.now, $1, $2, :unbanned, false)
   @recent.shift if @recent.length > 1000
