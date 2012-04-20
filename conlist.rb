@@ -42,8 +42,13 @@ def weechat_init
   @recent, @selected = [], 0
 
 
-  # Change me!
+  # Change these!
+
+  # Long name for the server buffer.
   server_name = "server.ponychat"
+
+  # Used as the AKILL reason and the KILL reason.
+  @ban_reason = "Suspicious activity, botnet drone, or ban evasion."
 
 
   Weechat.buffer_set(@buffer, "title", "Interactive Connection List")
@@ -218,11 +223,11 @@ def commit
     case conn.status
       
     when :akill_pending
-      Weechat.command(@server_buffer, "/os AKILL ADD *@#{conn.ip} !T 1h Drones")
+      Weechat.command(@server_buffer, "/os AKILL ADD *@#{conn.ip} !T 1h #{@ban_reason}")
       conn.status = :akilled
 
     when :kill_pending
-      Weechat.command(@server_buffer, "/kill #{conn.nick} Drones")
+      Weechat.command(@server_buffer, "/kill #{conn.nick} #{@ban_reason}")
       conn.status = :killed
 
     end
