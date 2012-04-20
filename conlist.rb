@@ -149,8 +149,13 @@ end
 def scroll_page_down
   height = Weechat.window_get_integer(Weechat.current_window(), "win_chat_height")
 
-  return if @selected + height > @recent.length - 1
-  @selected += height
+  return if @selected == @recent.length -1
+
+  if @selected + height > @recent.length - 1
+    @selected = height - 1
+  else
+    @selected += height
+  end
 
   update_display
 end
