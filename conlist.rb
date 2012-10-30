@@ -157,7 +157,7 @@ def scroll_page_down
   return if @selected == @recent.length - 1
 
   if @selected + height > @recent.length - 1
-    @selected = height - 1
+    @selected = @recent.length - 1
   else
     @selected += height
   end
