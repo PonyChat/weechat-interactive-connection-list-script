@@ -67,6 +67,8 @@ def weechat_init
   Weechat.buffer_set @buffer, 'key_bind_meta2-6~', '/icl pagedown'
   Weechat.buffer_set @buffer, 'key_bind_meta2-7~', '/icl home'
   Weechat.buffer_set @buffer, 'key_bind_meta2-8~', '/icl end'
+  Weechat.buffer_set @buffer, 'key_bind_meta2-1~', '/icl home'
+  Weechat.buffer_set @buffer, 'key_bind_meta2-4~', '/icl end'
   Weechat.buffer_set @buffer, 'key_bind_k',        '/icl kill'
   Weechat.buffer_set @buffer, 'key_bind_a',        '/icl akill'
   Weechat.buffer_set @buffer, 'key_bind_u',        '/icl unset'
@@ -106,13 +108,11 @@ def conn_hook data, buffer, date, tags, displayed, highlight, prefix, message
 end
 
 def input_cb data, modifier, modifier_data, string
-  return string if @buffer != Weechat.current_buffer
-
-  ''
+  (@buffer == Weechat.current_buffer) ? '' : string
 end
 
 def height
-  Weechat.window_get_integer Weechat.current_window(), 'win_chat_height'
+  Weechat.window_get_integer Weechat.current_window, 'win_chat_height'
 end
 
 def cmd data, buffer, args
