@@ -181,6 +181,7 @@ end
 
 def akill
   @clients.akill and scroll_down
+
   update_display
 end
 
@@ -249,7 +250,8 @@ class Clients < Array
 
   def mark flag
     return false if empty?
-    self[@position].status = flag
+
+    self[@position].mark flag
   end
 
   def commit! reason = ''
@@ -321,8 +323,7 @@ class Clients < Array
 end
 
 class Client
-  attr_reader :time, :nick, :ip
-  attr_accessor :status
+  attr_reader :time, :nick, :ip, :status
 
   def initialize buffer, nick, ip
     @time     = Time.now
@@ -393,16 +394,25 @@ class Client
   def reset_status
     return false unless @status == :akilled or @status == :killed
 
-    @stats = @online ? :online : :offline
+    @status = @online ? :online : :offline
   end
 
   def commit! reason = ''
     case :status
-    when :kill
+    when :kill_pending
       kill! reason
-    when :akill
+    when :akill_pending
       akill! reason
     end
+  end
+
+  def mark status
+    case :status
+    when :kill_pending
+      return if @status == :offline
+    end
+
+    @status = status
   end
 
   private
