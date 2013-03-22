@@ -32,15 +32,17 @@
 #   Enter               Apply pending KILLs and AKILLs.
 #
 
-
-ICL_Client = Struct.new(:time, :nick, :ip, :status, :current)
+# parentheses because vim does not know how to indent without them
+CONNECT_REGEX = (/Client connecting: (?<nick>[^ ]+) \([^)]+\) \[(?<ip>[0-9.:]+)\]/)
 
 def weechat_init
-  Weechat.register("conlist", "Kabaka", "1.0", "MIT", "Interactive Connection List", "", "")
+  Weechat.register "conlist", "Kabaka", "1.1", "MIT",
+    "Interactive Connection List", "", ""
 
-  @buffer = Weechat.buffer_new("Connections", "buf_in_cb", "", "", "")
-  @recent, @selected = [], 0
+  @buffer = Weechat.buffer_new "Connections", "buf_in_cb",
+    "", "", ""
 
+  @clients = Clients.new 1000
 
   # Change these!
 
@@ -51,87 +53,95 @@ def weechat_init
   @ban_reason = "Suspicious activity, botnet drone, or ban evasion."
 
 
-  Weechat.buffer_set(@buffer, "title", "Interactive Connection List")
+  Weechat.buffer_set @buffer,
+    "title", "Interactive Connection List"
 
-  Weechat.hook_command("icl", "Connection List Control", "", "", "", "cmd", "")
-  Weechat.hook_modifier("input_text_content", "input_cb", "")
+  Weechat.hook_command "icl", "Connection List Control", "", "", "", "cmd", ""
 
-  Weechat.buffer_set(@buffer, "key_bind_meta2-A",  "/icl up")
-  Weechat.buffer_set(@buffer, "key_bind_meta2-B",  "/icl down")
-  Weechat.buffer_set(@buffer, "key_bind_meta2-5~", "/icl pageup")
-  Weechat.buffer_set(@buffer, "key_bind_meta2-6~", "/icl pagedown")
-  Weechat.buffer_set(@buffer, "key_bind_meta2-7~", "/icl home")
-  Weechat.buffer_set(@buffer, "key_bind_meta2-8~", "/icl end")
-  Weechat.buffer_set(@buffer, "key_bind_k",        "/icl kill")
-  Weechat.buffer_set(@buffer, "key_bind_a",        "/icl akill")
-  Weechat.buffer_set(@buffer, "key_bind_u",        "/icl unset")
-  Weechat.buffer_set(@buffer, "key_bind_ctrl-M",   "/icl commit")
-  Weechat.buffer_set(@buffer, "key_bind_c",        "/icl clear")
-  Weechat.buffer_set(@buffer, "key_bind_r",        "/icl refresh")
+  Weechat.hook_modifier "input_text_content", "input_cb", ""
+
+  Weechat.buffer_set @buffer, "key_bind_meta2-A",  "/icl up"
+  Weechat.buffer_set @buffer, "key_bind_meta2-B",  "/icl down"
+  Weechat.buffer_set @buffer, "key_bind_meta2-5~", "/icl pageup"
+  Weechat.buffer_set @buffer, "key_bind_meta2-6~", "/icl pagedown"
+  Weechat.buffer_set @buffer, "key_bind_meta2-7~", "/icl home"
+  Weechat.buffer_set @buffer, "key_bind_meta2-8~", "/icl end"
+  Weechat.buffer_set @buffer, "key_bind_k",        "/icl kill"
+  Weechat.buffer_set @buffer, "key_bind_a",        "/icl akill"
+  Weechat.buffer_set @buffer, "key_bind_u",        "/icl unset"
+  Weechat.buffer_set @buffer, "key_bind_ctrl-M",   "/icl commit"
+  Weechat.buffer_set @buffer, "key_bind_c",        "/icl clear"
+  Weechat.buffer_set @buffer, "key_bind_r",        "/icl refresh"
 
   @server_buffer = Weechat.buffer_search("irc", server_name)
 
   if @server_buffer == nil
-    Weechat.print("", "Server buffer cannot be found.")
+    Weechat.print "",
+      "#{Weechat.prefix 'error'}Server buffer cannot be found."
+
     return Weechat::WEECHAT_RC_ERROR
   end
 
-  Weechat.hook_print(@server_buffer, "", "Client connecting", 0, "conn_hook", "")
-  
-  Weechat::WEECHAT_RC_OK
-end
-
-def conn_hook(data, buffer, date, tags, displayed, highlight, prefix, message)
-  return Weechat::WEECHAT_RC_OK unless message =~ /Client connecting: ([^ ]+) \([^)]+\) \[([0-9.:]+)\]/
-
-  scroll_after_update = @selected == @recent.length - 1
-
-  @recent << ICL_Client.new(Time.now, $1, $2, :unbanned, false)
-  @recent.shift if @recent.length > 1000
-
-  if scroll_after_update
-    scroll_end
-  else
-    update_display
-  end
+  Weechat.hook_print @server_buffer,
+    "", "Client connecting", 0, "conn_hook", ""
 
   Weechat::WEECHAT_RC_OK
 end
 
-def input_cb(data, modifier, modifier_data, string)
+def conn_hook data, buffer, date, tags, displayed, highlight, prefix, message
+  match = message.match CONNECT_REGEX
+
+  return Weechat::WEECHAT_RC_OK unless match
+
+  scroll_after_update = @clients.last?
+
+  @clients << Client.new(@server_buffer, match[:nick], match[:ip])
+
+  scroll_end if scroll_after_update
+
+  update_display
+
+  Weechat::WEECHAT_RC_OK
+end
+
+def input_cb data, modifier, modifier_data, string
   return string if @buffer != Weechat.current_buffer
 
   ""
 end
 
-def cmd(data, buffer, args)
+def height
+  Weechat.window_get_integer Weechat.current_window(), "win_chat_height"
+end
+
+def cmd data, buffer, args
   arr = args.split
 
-  case arr.shift.upcase
+  case arr.shift.downcase.to_sym
 
-  when "DOWN"
+  when :down
     scroll_down
-  when "UP"
+  when :up
     scroll_up
-  when "PAGEDOWN"
+  when :pagedown
     scroll_page_down
-  when "PAGEUP"
+  when :pageup
     scroll_page_up
-  when "HOME"
+  when :home
     scroll_home
-  when "END"
+  when :end
     scroll_end
-  when "AKILL"
+  when :akill
     akill
-  when "KILL"
+  when :kill
     kill
-  when "UNSET"
+  when :unset
     unset
-  when "COMMIT"
+  when :commit
     commit
-  when "CLEAR"
+  when :clear
     clear
-  when "REFRESH"
+  when :refresh
     update_display
   end
 
@@ -139,121 +149,66 @@ def cmd(data, buffer, args)
 end
 
 def scroll_down
-  @selected += 1 unless @selected == @recent.length - 1
-
-  update_display
+  @clients.down and update_display
 end
 
 def scroll_up
-  return if @selected == 0
-  @selected -= 1
-
-  update_display
+  @clients.up and update_display
 end
 
 def scroll_page_down
-  height = Weechat.window_get_integer(Weechat.current_window(), "win_chat_height")
-
-  return if @selected == @recent.length - 1
-
-  if @selected + height > @recent.length - 1
-    @selected = @recent.length - 1
-  else
-    @selected += height
-  end
-
-  update_display
+  @clients.down(height) and update_display
 end
 
 def scroll_page_up
-  height = Weechat.window_get_integer(Weechat.current_window(), "win_chat_height")
-
-  return if @selected == 0
-
-  if @selected - height < 0
-    @selected = 0
-  else
-    @selected -= height
-  end
-
-  update_display
+  @clients.up(height) and update_display
 end
 
 def scroll_home
-  @selected = 0
-
-  update_display
+  @clients.top and update_display
 end
 
 def scroll_end
-  @selected = @recent.length - 1
-
-  update_display
+  @clients.bottom and update_display
 end
 
 def kill
-  return if @recent[@selected] == nil
-
-  @recent[@selected].status = :kill_pending
-
-  scroll_down
-end
-
-def akill
-  return if @recent[@selected] == nil
-
-  @recent[@selected].status = :akill_pending
-
-  scroll_down
-end
-
-def unset
-  return if @recent[@selected] == nil
-  
-  return if @recent[@selected].status == :akilled
-  return if @recent[@selected].status == :killed
-
-  @recent[@selected].status = :unbanned
+  @clients.kill and scroll_down
 
   update_display
 end
 
+def akill
+  @clients.akill and scroll_down
+  update_display
+end
+
+def unset
+  @clients.unset and update_display
+end
+
 def commit
-  @recent.each do |conn|
-    case conn.status
-      
-    when :akill_pending
-      Weechat.command(@server_buffer, "/os AKILL ADD *@#{conn.ip} !T 1h #{@ban_reason}")
-      conn.status = :akilled
-
-    when :kill_pending
-      Weechat.command(@server_buffer, "/kill #{conn.nick} #{@ban_reason}")
-      conn.status = :killed
-
-    end
-  end
+  @clients.commit! @ban_reason
 
   update_display
 end
 
 def clear
-  @selected = 0
-  @recent.clear
-  update_display
+  @clients.clear and update_display
 end
 
 def update_display
-  Weechat.buffer_clear(@buffer)
+  Weechat.buffer_clear @buffer
 
-  height = Weechat.window_get_integer(Weechat.current_window(), "win_chat_height")
+  my_height = height
 
   start = 0
 
-  if @selected + 1 > height
-    start = ((@selected / height).floor * height)
+  if @clients.position + 1 > my_height
+    start = ((@clients.position / my_height).floor * my_height)
   end
 
-  @recent[start..start + height - 1].each_with_index do |conn, index|
+  @clients[start..start + my_height - 1].each_with_index do |conn, index|
     color = ""
 
     case conn.status
@@ -275,10 +230,154 @@ def update_display
 
     end
 
-    color << Weechat.color("reverse") if index + start == @selected
+    color << Weechat.color("reverse") if index + start == @clients.position
 
-    str = sprintf("%s\t%s%-40s %s", conn.nick, color, conn.ip, conn.status)
-    
-    Weechat.print_date_tags(@buffer, conn.time.to_i, "", str)
+    nick_color = Weechat.info_get 'irc_nick_color', conn.nick
+
+    str = sprintf "%s%s\t%s%-40s %s",
+      nick_color, conn.nick, color, conn.ip, conn.status
+
+    Weechat.print_date_tags @buffer,
+      conn.time.to_i, "prefix_nick_#{nick_color}", str
+ end
+end
+
+class Clients < Array
+  attr_accessor :position
+
+  def initialize max, *args
+    @max_length = max
+    @position   = 0
+    super(*args)
   end
+
+  def << client
+    super(client)
+
+    shift if length > @max_length
+  end
+
+  def kill
+    mark :kill_pending
+  end
+
+  def akill
+    mark :akill_pending
+  end
+
+  def unset
+    mark :online
+  end
+
+  def mark flag
+    return false if empty?
+    self[@position].status = flag
+  end
+
+  def commit! reason = ''
+    each do |client|
+      client.commit!
+    end
+  end
+
+  def clear
+    return false if empty?
+
+    @position = 0
+    super
+
+    true
+  end
+
+  def down distance = 1
+    return false if last?
+
+    if @position + distance > length - 1
+      @position = length - 1
+    else
+      @position += distance
+    end
+  end
+
+  def up distance = 1
+    return false if first?
+
+    if @position - distance < 0
+      @position = 0
+    else
+      @position -= 1
+    end
+  end
+
+  def top
+    @position = 0
+  end
+
+  def bottom
+    @position = length - 1
+  end
+
+  def first?
+    @position == 0
+  end
+
+  def last?
+    @position == length - 1
+  end
+end
+
+class Client
+  attr_reader :time, :nick, :ip
+  attr_accessor :status
+
+  def initialize buffer, nick, ip
+    @time   = Time.now
+    @status = :online
+    @online = true
+
+    @buffer = buffer
+
+    @nick, @ip = nick, ip
+  end
+
+  def online?
+    @online
+  end
+
+  def disconnected
+    @online = false
+    @status = :offline
+  end
+
+  def reset_status
+    return false unless @status == :akilled or @status == :killed
+
+    @stats = @online ? :online : :offline
+  end
+
+  def commit! reason = ''
+    case :status
+    when :kill
+      kill! reason
+    when :akill
+      akill! reason
+    end
+  end
+
+  private
+
+  def kill! reason
+    Weechat.command @buffer,
+      "/kill #{@nick} #{reason}"
+
+    @status = :killed
+  end
+
+  def akill! reason
+    Weechat.command @buffer,
+      "/os AKILL ADD *@#{@ip} !T 1h #{reason}"
+
+    @status = :akilled
+  end
+
 end
