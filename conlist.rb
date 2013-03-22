@@ -289,7 +289,7 @@ class Clients < Array
     if @position - distance < 0
       @position = 0
     else
-      @position -= 1
+      @position -= distance
     end
 
     self[@position].select
