@@ -36,54 +36,55 @@
 CONNECT_REGEX = (/Client connecting: (?<nick>[^ ]+) \([^)]+\) \[(?<ip>[0-9.:]+)\]/)
 
 def weechat_init
-  Weechat.register "conlist", "Kabaka", "1.1", "MIT",
-    "Interactive Connection List", "", ""
+  Weechat.register 'conlist', 'Kabaka', '1.1', 'MIT',
+    'Interactive Connection List', '', ''
 
-  @buffer = Weechat.buffer_new "Connections", "buf_in_cb",
-    "", "", ""
+  @buffer = Weechat.buffer_new 'Connections', 'buf_in_cb',
+    '', '', ''
 
   @clients = Clients.new 1000
 
   # Change these!
 
   # Long name for the server buffer.
-  server_name = "server.ponychat"
+  server_name = 'server.ponychat'
 
   # Used as the AKILL reason and the KILL reason.
-  @ban_reason = "Suspicious activity, botnet drone, or ban evasion."
+  @ban_reason = 'Suspicious activity, botnet drone, or ban evasion.'
 
 
   Weechat.buffer_set @buffer,
-    "title", "Interactive Connection List"
+    'title', 'Interactive Connection List'
 
-  Weechat.hook_command "icl", "Connection List Control", "", "", "", "cmd", ""
+  Weechat.hook_command 'icl', 'Interactive Connection List Control',
+    '', '', '', 'cmd', ''
 
-  Weechat.hook_modifier "input_text_content", "input_cb", ""
+  Weechat.hook_modifier 'input_text_content', 'input_cb', ''
 
-  Weechat.buffer_set @buffer, "key_bind_meta2-A",  "/icl up"
-  Weechat.buffer_set @buffer, "key_bind_meta2-B",  "/icl down"
-  Weechat.buffer_set @buffer, "key_bind_meta2-5~", "/icl pageup"
-  Weechat.buffer_set @buffer, "key_bind_meta2-6~", "/icl pagedown"
-  Weechat.buffer_set @buffer, "key_bind_meta2-7~", "/icl home"
-  Weechat.buffer_set @buffer, "key_bind_meta2-8~", "/icl end"
-  Weechat.buffer_set @buffer, "key_bind_k",        "/icl kill"
-  Weechat.buffer_set @buffer, "key_bind_a",        "/icl akill"
-  Weechat.buffer_set @buffer, "key_bind_u",        "/icl unset"
-  Weechat.buffer_set @buffer, "key_bind_ctrl-M",   "/icl commit"
-  Weechat.buffer_set @buffer, "key_bind_c",        "/icl clear"
-  Weechat.buffer_set @buffer, "key_bind_r",        "/icl refresh"
+  Weechat.buffer_set @buffer, 'key_bind_meta2-A',  '/icl up'
+  Weechat.buffer_set @buffer, 'key_bind_meta2-B',  '/icl down'
+  Weechat.buffer_set @buffer, 'key_bind_meta2-5~', '/icl pageup'
+  Weechat.buffer_set @buffer, 'key_bind_meta2-6~', '/icl pagedown'
+  Weechat.buffer_set @buffer, 'key_bind_meta2-7~', '/icl home'
+  Weechat.buffer_set @buffer, 'key_bind_meta2-8~', '/icl end'
+  Weechat.buffer_set @buffer, 'key_bind_k',        '/icl kill'
+  Weechat.buffer_set @buffer, 'key_bind_a',        '/icl akill'
+  Weechat.buffer_set @buffer, 'key_bind_u',        '/icl unset'
+  Weechat.buffer_set @buffer, 'key_bind_ctrl-M',   '/icl commit'
+  Weechat.buffer_set @buffer, 'key_bind_c',        '/icl clear'
+  Weechat.buffer_set @buffer, 'key_bind_r',        '/icl refresh'
 
   @server_buffer = Weechat.buffer_search("irc", server_name)
 
   if @server_buffer == nil
-    Weechat.print "",
+    Weechat.print '',
       "#{Weechat.prefix 'error'}Server buffer cannot be found."
 
     return Weechat::WEECHAT_RC_ERROR
   end
 
   Weechat.hook_print @server_buffer,
-    "", "Client connecting", 0, "conn_hook", ""
+    '', 'Client connecting', 0, 'conn_hook', ''
 
   Weechat::WEECHAT_RC_OK
 end
@@ -107,11 +108,11 @@ end
 def input_cb data, modifier, modifier_data, string
   return string if @buffer != Weechat.current_buffer
 
-  ""
+  ''
 end
 
 def height
-  Weechat.window_get_integer Weechat.current_window(), "win_chat_height"
+  Weechat.window_get_integer Weechat.current_window(), 'win_chat_height'
 end
 
 def cmd data, buffer, args
@@ -201,45 +202,20 @@ def update_display
   Weechat.buffer_clear @buffer
 
   my_height = height
-
-  start = 0
+  start     = 0
 
   if @clients.position + 1 > my_height
     start = ((@clients.position / my_height).floor * my_height)
   end
 
-  @clients[start..start + my_height - 1].each_with_index do |conn, index|
-    color = ""
-
-    case conn.status
-
-    when :killed
-      color << Weechat.color("red")
-
-    when :akilled
-      color << Weechat.color("lightred")
-
-    when :kill_pending
-      color << Weechat.color("brown")
-
-    when :akill_pending
-      color << Weechat.color("yellow")
-
-    else
-      color << Weechat.color("green")
-
-    end
-
-    color << Weechat.color("reverse") if index + start == @clients.position
-
-    nick_color = Weechat.info_get 'irc_nick_color', conn.nick
-
+  @clients[start..start + my_height - 1].each_with_index do |client, index|
     str = sprintf "%s%s\t%s%-40s %s",
-      nick_color, conn.nick, color, conn.ip, conn.status
+      client.nick_color, client.nick,
+      client.line_color, client.ip, client.status
 
     Weechat.print_date_tags @buffer,
-      conn.time.to_i, "prefix_nick_#{nick_color}", str
- end
+      client.time.to_i, "prefix_nick_#{client.nick_color}", str
+  end
 end
 
 class Clients < Array
@@ -252,6 +228,8 @@ class Clients < Array
   end
 
   def << client
+    client.select if empty?
+
     super(client)
 
     shift if length > @max_length
@@ -292,29 +270,45 @@ class Clients < Array
   def down distance = 1
     return false if last?
 
+    self[@position].unselect
+
     if @position + distance > length - 1
       @position = length - 1
     else
       @position += distance
     end
+
+    self[@position].select
   end
 
   def up distance = 1
     return false if first?
+
+    self[@position].unselect
 
     if @position - distance < 0
       @position = 0
     else
       @position -= 1
     end
+
+    self[@position].select
   end
 
   def top
+    self[@position].unselect
+
     @position = 0
+
+    self[@position].select
   end
 
   def bottom
+    self[@position].unselect
+
     @position = length - 1
+
+    self[@position].select
   end
 
   def first?
@@ -331,13 +325,48 @@ class Client
   attr_accessor :status
 
   def initialize buffer, nick, ip
-    @time   = Time.now
-    @status = :online
-    @online = true
+    @time     = Time.now
+    @status   = :online
+    @online   = true
+    @selected = false
 
     @buffer = buffer
 
     @nick, @ip = nick, ip
+  end
+
+  def nick_color
+    Weechat.info_get 'irc_nick_color', @nick
+  end
+
+  def line_color
+    case @status
+
+    when :killed
+      c = Weechat.color 'red'
+
+    when :akilled
+      c = Weechat.color 'lightred'
+
+    when :kill_pending
+      c = Weechat.color 'brown'
+
+    when :akill_pending
+      c = Weechat.color 'yellow'
+
+    when :online
+      c = Weechat.color 'green'
+
+    when :offline
+      c = Weechat.color 'green'
+
+    end
+
+    if selected?
+      c << Weechat.color('reverse')
+    end
+
+    c
   end
 
   def online?
@@ -347,6 +376,18 @@ class Client
   def disconnected
     @online = false
     @status = :offline
+  end
+
+  def select
+    @selected = true
+  end
+
+  def unselect
+    @selected = false
+  end
+
+  def selected?
+    @selected
   end
 
   def reset_status
