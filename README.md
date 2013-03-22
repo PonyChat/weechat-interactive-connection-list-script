@@ -42,7 +42,9 @@ action:
 * a - `AKILL`
 * u - cancel pending action
 
-Once you have marked your targets, press `c` to commit the pending tasks.
+Once you have marked your targets, press `enter` to commit the pending tasks.
+
+You may press `c` to clear the existing list of clients.
 
 **Commands *will* be throttled by your `anti_flood_prio_low` setting.**
 
