@@ -33,7 +33,7 @@
 #
 
 # parentheses because vim does not know how to indent without them
-CONNECT_REGEX = (/Client connecting: (?<nick>[^ ]+) \([^)]+\) \[(?<ip>[0-9.:]+)\]/)
+CONNECT_REGEX = (/Client connecting: (?<nick>[^ ]+) \([^)]+\) \[(?<ip>[a-f0-9.:]+)\]/)
 
 def weechat_init
   Weechat.register 'conlist', 'Kabaka', '1.1', 'MIT',
