@@ -33,7 +33,8 @@
 #
 
 # parentheses because vim does not know how to indent without them
-CONNECT_REGEX = (/Client connecting: (?<nick>[^ ]+) \([^)]+\) \[(?<ip>[a-f0-9.:]+)\]/)
+CONNECT_REGEX     = (/Client connecting: (?<nick>[^ ]+) \((?<user>[^@]+)@(?<host>[^\)]+)\).+\[(?<ip>[a-f0-9.:]+)\]/)
+DISCONNECT_REGEX  = (/Client exiting: (?<nick>[^ ]+) \((?<user>[^@]+)@(?<host>[^\)]+)\).+\[(?<ip>[a-f0-9.:]+)\]$/)
 
 def weechat_init
   Weechat.register 'conlist', 'Kabaka', '1.1', 'MIT',
@@ -86,7 +87,7 @@ def weechat_init
   end
 
   Weechat.hook_print @server_buffer,
-    '', 'Client connecting', 0, 'conn_hook', ''
+    '', '*** Notice -- Client', 0, 'conn_hook', ''
 
   Weechat::WEECHAT_RC_OK
 end
@@ -94,15 +95,38 @@ end
 def conn_hook data, buffer, date, tags, displayed, highlight, prefix, message
   match = message.match CONNECT_REGEX
 
-  return Weechat::WEECHAT_RC_OK unless match
+  return on_connect match if match
 
+  match = message.match DISCONNECT_REGEX
+
+  return on_disconnect match if match
+
+  Weechat::WEECHAT_RC_OK
+end
+
+def on_connect match
   scroll_after_update = @clients.last?
 
-  @clients << Client.new(@server_buffer, match[:nick], match[:ip])
+  @clients << Client.new(@server_buffer, match[:nick], match[:user], match[:ip])
 
   scroll_end if scroll_after_update
 
   update_display
+
+  Weechat::WEECHAT_RC_OK
+end
+
+def on_disconnect match
+  Weechat.print '', match.inspect
+  @clients.each do |client|
+    if client.ip == match[:ip] and client.user == match[:user]
+      client.disconnected
+
+      update_display
+
+      return Weechat::WEECHAT_RC_OK
+    end
+  end
 
   Weechat::WEECHAT_RC_OK
 end
@@ -186,7 +210,7 @@ def akill
 end
 
 def unset
-  @clients.unset and update_display
+  @clients.reset_status and update_display
 end
 
 def commit
@@ -210,9 +234,9 @@ def update_display
   end
 
   @clients[start..start + my_height - 1].each_with_index do |client, index|
-    str = sprintf "%s%s\t%s%-40s %s",
+    str = sprintf "%s%s\t%s%-20s%-40s%s",
       client.nick_color, client.nick,
-      client.line_color, client.ip, client.status
+      client.line_color, client.user, client.ip, client.status
 
     Weechat.print_date_tags @buffer,
       client.time.to_i, "prefix_nick_#{client.nick_color}", str
@@ -236,6 +260,10 @@ class Clients < Array
     shift if length > @max_length
   end
 
+  def selected
+    self[@position]
+  end
+
   def kill
     mark :kill_pending
   end
@@ -244,19 +272,19 @@ class Clients < Array
     mark :akill_pending
   end
 
-  def unset
-    mark :online
+  def reset_status
+    selected.reset_status
   end
 
   def mark flag
     return false if empty?
 
-    self[@position].mark flag
+    selected.mark flag
   end
 
   def commit! reason = ''
     each do |client|
-      client.commit!
+      client.commit! reason
     end
   end
 
@@ -272,7 +300,7 @@ class Clients < Array
   def down distance = 1
     return false if last?
 
-    self[@position].unselect
+    selected.unselect
 
     if @position + distance > length - 1
       @position = length - 1
@@ -280,13 +308,13 @@ class Clients < Array
       @position += distance
     end
 
-    self[@position].select
+    selected.select
   end
 
   def up distance = 1
     return false if first?
 
-    self[@position].unselect
+    selected.unselect
 
     if @position - distance < 0
       @position = 0
@@ -294,15 +322,15 @@ class Clients < Array
       @position -= distance
     end
 
-    self[@position].select
+    selected.select
   end
 
   def top
-    self[@position].unselect
+    selected.unselect
 
     @position = 0
 
-    self[@position].select
+    selected.select
   end
 
   def bottom
@@ -323,9 +351,9 @@ class Clients < Array
 end
 
 class Client
-  attr_reader :time, :nick, :ip, :status
+  attr_reader :time, :nick, :user, :ip, :status
 
-  def initialize buffer, nick, ip
+  def initialize buffer, nick, user, ip
     @time     = Time.now
     @status   = :online
     @online   = true
@@ -333,7 +361,7 @@ class Client
 
     @buffer = buffer
 
-    @nick, @ip = nick, ip
+    @nick, @user, @ip = nick, user, ip
   end
 
   def nick_color
@@ -392,13 +420,13 @@ class Client
   end
 
   def reset_status
-    return false unless @status == :akilled or @status == :killed
+    return false if @status == :akilled or @status == :killed
 
     @status = @online ? :online : :offline
   end
 
   def commit! reason = ''
-    case :status
+    case @status
     when :kill_pending
       kill! reason
     when :akill_pending
@@ -407,7 +435,7 @@ class Client
   end
 
   def mark status
-    case :status
+    case status
     when :kill_pending
       return if @status == :offline
     end
