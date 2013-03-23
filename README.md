@@ -7,10 +7,10 @@ keyboard shortcuts.
 
 * IRC Network
   * Charybdis-family IRCD
-    * KILL Access
-    * Global Connection Notices (SNOMASK +F, requires loaded IRCD module)
+    * `KILL` Access
+    * Global Connection Notices (SNOMASK `+F`, requires loaded IRCD module)
   * Atheme-Services
-    * AKILL Access
+    * `OperServ AKILL` Access
 * WeeChat
   * Ruby 1.9 Plugin
 
@@ -19,9 +19,9 @@ keyboard shortcuts.
 *For the time being, configuration is done by editing conlist.rb. This will be
 moved to configuration settings within WeeChat very shortly.*
 
-* server_name: the long format name of the IRC server buffer which receives the
-  connection notices.
-* @ban_reason: the reason to use in the KILL and AKILL commands.
+* `server_name` - the long format name of the IRC server buffer which receives
+  the connection notices.
+* `@ban_reason` - the reason to use in the KILL and AKILL commands.
 
 # Usage
 
