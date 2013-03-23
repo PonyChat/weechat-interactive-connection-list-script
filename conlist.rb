@@ -404,6 +404,9 @@ class Client
 
   def disconnected
     @online = false
+
+    return if @status == :akilled or @status == :killed
+
     @status = :offline
   end
 
