@@ -117,7 +117,6 @@ def on_connect match
 end
 
 def on_disconnect match
-  Weechat.print '', match.inspect
   @clients.each do |client|
     if client.ip == match[:ip] and client.user == match[:user]
       client.disconnected
@@ -334,11 +333,11 @@ class Clients < Array
   end
 
   def bottom
-    self[@position].unselect
+    selected.unselect
 
     @position = length - 1
 
-    self[@position].select
+    selected.select
   end
 
   def first?
