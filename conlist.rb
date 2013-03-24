@@ -33,7 +33,7 @@
 #
 
 # parentheses because vim does not know how to indent without them
-CONNECT_REGEX     = (/Client connecting: (?<nick>[^ ]+) \((?<user>[^@]+)@(?<host>[^\)]+)\).+\[(?<ip>[a-f0-9.:]+)\]/)
+CONNECT_REGEX     = (/Client connecting: (?<nick>[^ ]+) \((?<user>[^@]+)@(?<host>[^\)]+)\) \[(?<ip>[a-f0-9.:]+)\]/)
 DISCONNECT_REGEX  = (/Client exiting: (?<nick>[^ ]+) \((?<user>[^@]+)@(?<host>[^\)]+)\).+\[(?<ip>[a-f0-9.:]+)\]$/)
 
 def weechat_init
