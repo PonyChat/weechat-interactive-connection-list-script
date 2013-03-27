@@ -256,7 +256,11 @@ class Clients < Array
 
     super(client)
 
-    shift if length > @max_length
+    if length > @max_length
+      shift
+      
+      @position -= 1 if @position == length
+    end
   end
 
   def selected
