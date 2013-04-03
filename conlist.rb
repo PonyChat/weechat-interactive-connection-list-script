@@ -105,11 +105,7 @@ def conn_hook data, buffer, date, tags, displayed, highlight, prefix, message
 end
 
 def on_connect match
-  scroll_after_update = @clients.last?
-
   @clients << Client.new(@server_buffer, match[:nick], match[:user], match[:ip])
-
-  scroll_end if scroll_after_update
 
   update_display
 
@@ -254,12 +250,18 @@ class Clients < Array
   def << client
     client.select if empty?
 
+    at_end = last?
+
+    selected.unselect if at_end
+
     super(client)
 
     if length > @max_length
       shift
+    end
       
-      @position -= 1 if @position == length
+    if at_end
+      bottom
     end
   end
 
